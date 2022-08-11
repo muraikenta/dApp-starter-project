@@ -13,9 +13,10 @@ const App = () => {
   const [messageValue, setMessageValue] = useState("");
   /* すべてのwavesを保存する状態変数を定義 */
   const [allWaves, setAllWaves] = useState([]);
+  const [mining, setMining] = useState(false);
   console.log("currentAccount: ", currentAccount);
   /* デプロイされたコントラクトのアドレスを保持する変数を作成 */
-  const contractAddress = "0x6c5Fbf2D89a149bFFF33E63F60aC64598d6d6bB6";
+  const contractAddress = "0xB62FC853bCE09716A57fA7fA4A76F274BE1b02B6";
   /* コントラクトからすべてのwavesを取得するメソッドを作成 */
   /* ABIの内容を参照する変数を作成 */
   const contractABI = abi.abi;
@@ -127,6 +128,7 @@ const App = () => {
       });
       console.log("Connected: ", accounts[0]);
       setCurrentAccount(accounts[0]);
+      getAllWaves();
     } catch (error) {
       console.log(error);
     }
@@ -153,13 +155,24 @@ const App = () => {
           "Contract balance:",
           ethers.utils.formatEther(contractBalance)
         );
+        try {
+          const waveTxn = await wavePortalContract.wave(messageValue, {
+            gasLimit: 300000,
+          });
+          console.log("Mining...", waveTxn.hash);
+          setMining(true);
+          await waveTxn.wait();
+          console.log("Mined -- ", waveTxn.hash);
+        } catch (e) {
+          console.log(e);
+          window.alert(
+            "Failed. Please try at least 1 minute after the last wave."
+          );
+        } finally {
+          setMining(false);
+          setMessageValue("");
+        }
         /* コントラクトに👋（wave）を書き込む */
-        const waveTxn = await wavePortalContract.wave(messageValue, {
-          gasLimit: 300000,
-        });
-        console.log("Mining...", waveTxn.hash);
-        await waveTxn.wait();
-        console.log("Mined -- ", waveTxn.hash);
         count = await wavePortalContract.getTotalWaves();
         console.log("Retrieved total wave count...", count.toNumber());
 
@@ -169,7 +182,7 @@ const App = () => {
         /* コントラクトの残高が減っていることを確認 */
         if (contractBalance_post.lt(contractBalance)) {
           /* 減っていたら下記を出力 */
-          console.log("User won ETH!");
+          window.alert("You won ETH!");
         } else {
           console.log("User didn't win ETH.");
         }
@@ -216,13 +229,11 @@ const App = () => {
             Connect Wallet
           </button>
         )}
-        {currentAccount && (
-          <button className="waveButton">Wallet Connected</button>
-        )}
+        {currentAccount && <div>Wallet Connected 🍻</div>}
         {/* waveボタンにwave関数を連動 */}
         {currentAccount && (
-          <button className="waveButton" onClick={wave}>
-            Wave at Me
+          <button className="waveButton" onClick={wave} disabled={mining}>
+            {mining ? "mining..." : "Wave at Me"}
           </button>
         )}
         {/* メッセージボックスを実装*/}
